@@ -56,8 +56,11 @@ curl -X PUT "https://www.zillow.com/async-create-search-page-state" \
 | `isRecentlySold` | object | `{"value": true}` | Recently sold |
 | `isComingSoon` | object | `{"value": true}` | Coming soon |
 | `isAuction` | object | `{"value": false}` | Exclude auctions |
+| `isOpenHousesOnly` | object | `{"value": true}` | Open houses only ✅ VERIFIED |
 | `hasPool` | object | `{"value": true}` | Has pool |
 | `sortSelection` | object | `{"value": "days"}` | Sort order |
+
+> **Open houses:** When `isOpenHousesOnly` is `true`, each result in `listResults` contains an `open_house_info` object with `startTime` and `endTime` timestamps (ISO 8601).
 
 ### Sort Values
 

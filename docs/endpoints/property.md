@@ -173,3 +173,43 @@ https://photos.zillowstatic.com/fp/{photo-id}-{size-variant}.webp
 ```
 
 Size variants: `cc_ft_384`, `scaled_within_800_600`, `uncropped_scaled_within_1536_1152`, `p_e`
+
+---
+
+## 7. Agent Profile Page
+
+**Endpoint:** `https://www.zillow.com/profile/{AgentName}/`  
+**Method:** `GET` (HTML with embedded JSON)  
+**Verification:** ✅ VERIFIED
+
+Agent profile pages embed full agent data in `__NEXT_DATA__`. The `encodedZuid` extracted here is required for `AgentReviewQuery` via GraphQL.
+
+```python
+import httpx, json
+from parsel import Selector
+
+resp = httpx.get(
+    "https://www.zillow.com/profile/JohnSmithRealtor/",
+    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+)
+data = json.loads(Selector(resp.text).css("script#__NEXT_DATA__::text").get())
+agent = data["props"]["pageProps"]["agentProfile"]
+encoded_zuid = agent["encodedZuid"]
+```
+
+**Key fields in `agentProfile`:**
+
+| Field | Description |
+|-------|-------------|
+| `encodedZuid` | Unique agent ID (use with `AgentReviewQuery`) |
+| `displayName` | Agent full name |
+| `profilePhotoSrc` | Profile photo URL |
+| `businessName` | Brokerage name |
+| `phoneNumber` | Contact phone |
+| `reviewsSummary.averageRating` | Star rating (0–5) |
+| `reviewsSummary.reviewCount` | Number of reviews |
+| `profileStats.totalSales` | Total sales count |
+| `currentUrl` | Canonical profile URL |
+
+> Use `encodedZuid` with `AgentReviewQuery` on `www.zillow.com/graphql/` to fetch reviews and recent sales via API.
+

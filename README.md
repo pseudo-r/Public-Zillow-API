@@ -886,9 +886,13 @@ The `sha256Hash` values change with Zillow deployments. Use POST with inline que
 |-----------|----------|-----------|---------|
 | `GetAutocompleteResults` | `/zg-graph` | `query`, `resultType[]` | Location suggestions |
 | `CollectionOfRecentSearches` | `/zg-graph` | (session) | User's recent searches |
+| `GetCarouselPhotos` | `/zg-graph` | `zpid` | Listing photo carousel URLs |
+| `ForSalePriorityQuery` | `/graphql/` | `zpid` | Core property facts (price, beds, baths, Zestimate) |
+| `RichMediaWebHDPQuery` | `/graphql/` | `zpid` | High-res photos, virtual tour URLs |
 | `ZestimateDeepDiveQuery` | `/graphql/` | `zpid` | Zestimate, value range, history |
 | `HomeValueChartDataQuery` | `/graphql/` | `zpid`, `useHVChartDataSource` | Value time series |
 | `WalkTransitAndBikeScoreQuery` | `/graphql/` | `zpid` | Walk/transit/bike scores |
+| `OfferStrengthQuery` | `/graphql/` | `zpid` | Market competitiveness / offer strength |
 | `PropertyClimateRiskQuery` | `/graphql/` | `zpid` | Flood, fire, heat, wind risk |
 | `SimilarSalesQuery` | `/graphql/` | `zpid` | Comparable sold homes |
 | `NearbyHomesQuery` | `/graphql/` | `zpid` | Nearby active listings |
@@ -896,7 +900,9 @@ The `sha256Hash` values change with Zillow deployments. Use POST with inline que
 | `HdpMortgageCalculatorQuery` | `/graphql/` | `zpid`, `price` | Monthly payment estimates |
 | `ListingDetailsQuery` | `/graphql/` | `zpid` | Full listing detail |
 | `RentEstimateQuery` | `/graphql/` | `zpid` | Rent Zestimate detail |
-| `RentalCostAndFeesBuildingQuery` | `/graphql/` | `zpid` | Building-level rent costs and fees |
+| `RentalCostAndFeesBuildingQuery` | `/graphql/` | `zpid` | Rental costs, fees, utilities |
+| `BuildingPageOverviewQuery` | `/graphql/` | `zpid` | Unit availability, rent ranges, amenities |
+| `AgentReviewQuery` | `/graphql/` | `encodedZuid` | Agent reviews, ratings, recent sales |
 
 ---
 

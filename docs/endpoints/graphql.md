@@ -29,28 +29,34 @@ x-caller-id: hdp-react-web-client         # for /graphql/ (optional but improves
 
 ## Known Operations — `/graphql/`
 
-| Operation | Variables | Returns |
-|-----------|-----------|---------|
-| `ZestimateDeepDiveQuery` | `zpid` | Zestimate, value range, price history |
-| `HomeValueChartDataQuery` | `zpid`, `useHVChartDataSource` | Value time series |
-| `WalkTransitAndBikeScoreQuery` | `zpid` | Walk/transit/bike scores |
-| `PropertyClimateRiskQuery` | `zpid` | Flood, fire, heat, wind risk |
-| `SimilarSalesQuery` | `zpid` | Comparable recently sold |
-| `NearbyHomesQuery` | `zpid` | Nearby active listings |
-| `SchoolsQuery` | `zpid` | Nearby school ratings |
-| `HdpMortgageCalculatorQuery` | `zpid`, `price` | Monthly payment estimate |
-| `ListingDetailsQuery` | `zpid` | Full listing detail |
-| `RentEstimateQuery` | `zpid` | Rent Zestimate detail |
-| `RentalCostAndFeesBuildingQuery` | `zpid` | Rental costs, fees, utilities breakdown |
+| Operation | Variables | Returns | Verification |
+|-----------|-----------|---------|-------------|
+| `ForSalePriorityQuery` | `zpid` | Core property facts (price, address, beds, baths, Zestimate, description) | ✅ VERIFIED |
+| `RichMediaWebHDPQuery` | `zpid` | High-res photos, virtual tour URLs, media metadata | ✅ VERIFIED |
+| `ZestimateDeepDiveQuery` | `zpid` | Zestimate, value range, price history | ✅ VERIFIED |
+| `HomeValueChartDataQuery` | `zpid`, `useHVChartDataSource` | Value time series | ✅ VERIFIED |
+| `WalkTransitAndBikeScoreQuery` | `zpid` | Walk/transit/bike scores | ✅ VERIFIED |
+| `OfferStrengthQuery` | `zpid` | Local market competitiveness / offer strength score | ✅ VERIFIED |
+| `PropertyClimateRiskQuery` | `zpid` | Flood, fire, heat, wind risk | ⚠️ PARTIAL |
+| `SimilarSalesQuery` | `zpid` | Comparable recently sold | ⚠️ PARTIAL |
+| `NearbyHomesQuery` | `zpid` | Nearby active listings | ⚠️ PARTIAL |
+| `SchoolsQuery` | `zpid` | Nearby school ratings | ⚠️ PARTIAL |
+| `HdpMortgageCalculatorQuery` | `zpid`, `price` | Monthly payment estimate | ⚠️ PARTIAL |
+| `ListingDetailsQuery` | `zpid` | Full listing detail | ⚠️ PARTIAL |
+| `RentEstimateQuery` | `zpid` | Rent Zestimate detail | ⚠️ PARTIAL |
+| `RentalCostAndFeesBuildingQuery` | `zpid` | Rental costs, fees, utilities breakdown | ✅ VERIFIED |
+| `BuildingPageOverviewQuery` | `zpid` | Unit availability, rent ranges, building amenities | ✅ VERIFIED |
+| `AgentReviewQuery` | `encodedZuid` | Agent reviews, ratings, recent sales | ✅ VERIFIED |
 
 ---
 
 ## Known Operations — `/zg-graph`
 
-| Operation | Variables | Returns |
-|-----------|-----------|---------|
-| `GetAutocompleteResults` | `query`, `resultType[]` | Location/listing suggestions |
-| `CollectionOfRecentSearches` | (session cookie) | User's recent search history |
+| Operation | Variables | Returns | Verification |
+|-----------|-----------|---------|-------------|
+| `GetAutocompleteResults` | `query`, `resultType[]` | Location/listing suggestions | ✅ VERIFIED |
+| `CollectionOfRecentSearches` | (session cookie) | User's recent search history | ✅ VERIFIED |
+| `GetCarouselPhotos` | `zpid` / listing ID | Photo URLs and metadata for listing carousel | ✅ VERIFIED |
 
 ---
 
@@ -126,6 +132,64 @@ curl -X POST "https://www.zillow.com/zg-graph" \
       "resultType": ["REGIONS", "FORSALE", "RENTALS", "SOLD"]
     },
     "query": "query GetAutocompleteResults($query: String!, $resultType: [AutocompleteResultType!]) { zgsAutoComplete(query: $query, resultType: $resultType) { results { display resultType metaData { regionId regionType city state lat lng } } } }"
+  }'
+```
+
+### `AgentReviewQuery`
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -d '{
+    "operationName": "AgentReviewQuery",
+    "variables": {"encodedZuid": "<agent-encoded-id>"},
+    "query": "query AgentReviewQuery($encodedZuid: String!) { agentProfile(encodedZuid: $encodedZuid) { displayName reviewsSummary { averageRating reviewCount } recentSales { price address dateSold } reviews { reviewText rating reviewerName } } }"
+  }'
+```
+
+> Get `encodedZuid` from a Zillow agent profile URL: `https://www.zillow.com/profile/<AgentName>/` — inspect the page's `__NEXT_DATA__` for `encodedZuid`.
+
+### `BuildingPageOverviewQuery`
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -d '{
+    "operationName": "BuildingPageOverviewQuery",
+    "variables": {"zpid": 2077091803},
+    "query": "query BuildingPageOverviewQuery($zpid: ID!) { property(zpid: $zpid) { zpid buildingName unitCount availableUnits { zpid price bedrooms bathrooms livingArea availableFrom } amenities { category items } } }"
+  }'
+```
+
+### `OfferStrengthQuery`
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -d '{
+    "operationName": "OfferStrengthQuery",
+    "variables": {"zpid": 2077091803},
+    "query": "query OfferStrengthQuery($zpid: ID!) { property(zpid: $zpid) { zpid offerStrength { competitivenessBucket localMarketConditions } } }"
+  }'
+```
+
+### `GetCarouselPhotos` (via `/zg-graph`)
+
+```bash
+curl -X POST "https://www.zillow.com/zg-graph" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: search-sub-app-client" \
+  -d '{
+    "operationName": "GetCarouselPhotos",
+    "variables": {"zpid": 2077091803},
+    "query": "query GetCarouselPhotos($zpid: ID!) { property(zpid: $zpid) { zpid photos { url caption } } }"
   }'
 ```
 
