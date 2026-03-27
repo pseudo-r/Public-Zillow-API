@@ -65,7 +65,60 @@ curl -X PUT "https://www.zillow.com/async-create-search-page-state" \
 
 ---
 
-## 2. Rent Zestimate via GraphQL
+## 3. Rental Costs and Fees (RCF)
+
+**Endpoint:** `https://www.zillow.com/rentals/api/rcf/v1/rcf`  
+**Method:** `POST`  
+**Verification:** ✅ VERIFIED (live network capture)
+
+Powers the "Total monthly cost" fee transparency breakdown shown on rental listing pages.
+
+```bash
+curl -X POST "https://www.zillow.com/rentals/api/rcf/v1/rcf" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -d '{"zpid": 2077091803}'
+```
+
+**Example Response (trimmed):**
+```json
+{
+  "zpid": 2077091803,
+  "monthlyRent": 2800,
+  "fees": [
+    {"name": "Parking", "amount": 150, "frequency": "monthly", "required": false},
+    {"name": "Pet fee", "amount": 50, "frequency": "monthly", "required": false}
+  ],
+  "utilities": [
+    {"name": "Water", "includedInRent": true},
+    {"name": "Trash", "includedInRent": true},
+    {"name": "Electricity", "includedInRent": false}
+  ],
+  "totalMonthlyMin": 2800,
+  "totalMonthlyMax": 3000
+}
+```
+
+---
+
+## 4. Rental Costs and Fees via GraphQL
+
+**Endpoint:** `https://www.zillow.com/graphql/`  
+**Operation:** `RentalCostAndFeesBuildingQuery`  
+**Method:** `POST`  
+**Verification:** ✅ VERIFIED (observed in live network traffic)
+
+```json
+{
+  "operationName": "RentalCostAndFeesBuildingQuery",
+  "variables": {"zpid": 2077091803},
+  "query": "query RentalCostAndFeesBuildingQuery($zpid: ID!) { property(zpid: $zpid) { zpid rentZestimate rentBreakdown { fees utilities includedUtilities } } }"
+}
+```
+
+> Use for building-level fee data (`_bld` pages). Use `/rentals/api/rcf/v1/rcf` for individual unit listings.
+
+---
 
 **Endpoint:** `https://www.zillow.com/graphql/`  
 **Method:** `POST`  

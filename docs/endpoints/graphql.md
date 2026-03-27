@@ -41,6 +41,7 @@ x-caller-id: hdp-react-web-client         # for /graphql/ (optional but improves
 | `HdpMortgageCalculatorQuery` | `zpid`, `price` | Monthly payment estimate |
 | `ListingDetailsQuery` | `zpid` | Full listing detail |
 | `RentEstimateQuery` | `zpid` | Rent Zestimate detail |
+| `RentalCostAndFeesBuildingQuery` | `zpid` | Rental costs, fees, utilities breakdown |
 
 ---
 
@@ -49,6 +50,7 @@ x-caller-id: hdp-react-web-client         # for /graphql/ (optional but improves
 | Operation | Variables | Returns |
 |-----------|-----------|---------|
 | `GetAutocompleteResults` | `query`, `resultType[]` | Location/listing suggestions |
+| `CollectionOfRecentSearches` | (session cookie) | User's recent search history |
 
 ---
 

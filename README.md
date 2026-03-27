@@ -53,12 +53,13 @@ These apps are live examples of what you can build using this documentation and 
 
 Zillow provides undocumented internal APIs that power their website and mobile apps. These endpoints return JSON data for property listings, home values, rental data, market trends, and more.
 
-**Three main API families:**
-- `www.zillow.com` — Main site API (search, property pages, rentals)
+**Four main API families:**
+- `www.zillow.com` — Main site API (search, property pages, rentals, nav)
 - `www.zillow.com/graphql/` — GraphQL (property detail, estimates, scores)
-- `www.zillow.com/zg-graph` — Secondary GraphQL (autocomplete, search suggestions)
+- `www.zillow.com/zg-graph` — Secondary GraphQL (autocomplete, recent searches)
+- `mortgageapi.zillow.com` — Mortgage rates API (live-verified, no auth)
 
-**Additional domains documented:** `zillowstatic.com` (CDN/images) · `zillow.com/search/` (legacy search) · `bridgeinteractive.com` (official partner API, access-restricted)
+**Additional domains documented:** `zillowstatic.com` (CDN/images) · `zillow.com/search/` (legacy search) · `zillow.com/rentals/api/rcf/` (rental fees microservice) · `bridgeinteractive.com` (official partner API, access-restricted)
 
 ### Important Notes
 
@@ -74,10 +75,12 @@ Zillow provides undocumented internal APIs that power their website and mobile a
 
 | Domain | Purpose |
 |--------|---------|
-| `www.zillow.com` | Main site — search, property pages, rentals |
+| `www.zillow.com` | Main site — search, property pages, rentals, rent costs |
 | `www.zillow.com/graphql/` | GraphQL endpoint — property detail, Zestimate, scores |
-| `www.zillow.com/zg-graph` | Secondary GraphQL — autocomplete, region data |
+| `www.zillow.com/zg-graph` | Secondary GraphQL — autocomplete, recent searches |
+| `www.zillow.com/rentals/api/rcf/v1/` | Rental costs and fees microservice |
 | `www.zillow.com/search/` | Legacy search endpoints (partially active) |
+| `mortgageapi.zillow.com` | Mortgage rates API — no auth required |
 | `zillowstatic.com` | CDN — listing images, map tiles |
 | `bridgeinteractive.com` | Official partner/Zestimate API (requires approval) |
 
@@ -703,6 +706,51 @@ Building pages for multi-family/apartment complexes — same `__NEXT_DATA__` pat
 
 ---
 
+### 12. Rental Costs and Fees (RCF)
+
+**Endpoint:** `https://www.zillow.com/rentals/api/rcf/v1/rcf`  
+**Method:** `POST`  
+**Verification:** ✅ VERIFIED (live network capture)
+
+A dedicated microservice returning transparent fee breakdowns for rental properties and apartment buildings. Powers the "Total monthly cost" breakdown shown on rental listings.
+
+**Headers:**
+```
+Content-Type: application/json
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
+```
+
+**Request Body:**
+```json
+{
+  "zpid": 2077091803,
+  "listingId": "<listing-id>"
+}
+```
+
+**Example Response (trimmed):**
+```json
+{
+  "zpid": 2077091803,
+  "monthlyRent": 2800,
+  "fees": [
+    {"name": "Parking", "amount": 150, "frequency": "monthly", "required": false},
+    {"name": "Pet fee", "amount": 50, "frequency": "monthly", "required": false}
+  ],
+  "utilities": [
+    {"name": "Water", "includedInRent": true},
+    {"name": "Trash", "includedInRent": true},
+    {"name": "Electricity", "includedInRent": false}
+  ],
+  "totalMonthlyMin": 2800,
+  "totalMonthlyMax": 3000
+}
+```
+
+> Also available via `graphql/` as `RentalCostAndFeesBuildingQuery` for building-level fee data.
+
+---
+
 ## Market / Valuation Endpoints
 
 ### 12. Zestimate History (Home Value Over Time)
@@ -837,6 +885,7 @@ The `sha256Hash` values change with Zillow deployments. Use POST with inline que
 | Operation | Endpoint | Variables | Returns |
 |-----------|----------|-----------|---------|
 | `GetAutocompleteResults` | `/zg-graph` | `query`, `resultType[]` | Location suggestions |
+| `CollectionOfRecentSearches` | `/zg-graph` | (session) | User's recent searches |
 | `ZestimateDeepDiveQuery` | `/graphql/` | `zpid` | Zestimate, value range, history |
 | `HomeValueChartDataQuery` | `/graphql/` | `zpid`, `useHVChartDataSource` | Value time series |
 | `WalkTransitAndBikeScoreQuery` | `/graphql/` | `zpid` | Walk/transit/bike scores |
@@ -847,6 +896,7 @@ The `sha256Hash` values change with Zillow deployments. Use POST with inline que
 | `HdpMortgageCalculatorQuery` | `/graphql/` | `zpid`, `price` | Monthly payment estimates |
 | `ListingDetailsQuery` | `/graphql/` | `zpid` | Full listing detail |
 | `RentEstimateQuery` | `/graphql/` | `zpid` | Rent Zestimate detail |
+| `RentalCostAndFeesBuildingQuery` | `/graphql/` | `zpid` | Building-level rent costs and fees |
 
 ---
 
@@ -896,8 +946,10 @@ Used for map overlay tiles (heat maps, region overlays). Not easily consumable o
 |--------|---------|--------|
 | `www.zillow.com` | Main site — search, detail, rentals | ✅ Current, primary |
 | `www.zillow.com/graphql/` | GraphQL — property data, scores, estimates | ✅ Current, primary |
-| `www.zillow.com/zg-graph` | GraphQL — autocomplete, region metadata | ✅ Current |
+| `www.zillow.com/zg-graph` | GraphQL — autocomplete, recent searches | ✅ Current |
+| `www.zillow.com/rentals/api/rcf/v1/` | Rental costs and fees microservice | ✅ Current |
 | `www.zillow.com/search/GetSearchPageState.htm` | Legacy REST search | ⚠️ Legacy, partially active |
+| `mortgageapi.zillow.com` | Mortgage rates — no auth required | ✅ Current |
 | `photos.zillowstatic.com` | Property listing photos (CDN) | ✅ Current, static |
 | `maps.zillowstatic.com` | Map tile CDN | ✅ Current, static |
 | `www.zillowstatic.com` | Static assets (JS, CSS, images) | ✅ Current, static |
@@ -920,6 +972,10 @@ Autocomplete (zg-graph GetAutocompleteResults)
   → regionId + region metadata
   → used in searchQueryState.regionSelection[]
 
+Recent Searches (zg-graph CollectionOfRecentSearches)
+  → requires session cookie (zguid)
+  → returns user's last N searched locations
+
 Search (async-create-search-page-state)
   → returns zpid for each listing
   → returns hdpData.homeInfo (price, beds, baths, coords)
@@ -934,6 +990,12 @@ zpid
     → PropertyClimateRiskQuery → climate risk scores
     → SimilarSalesQuery → comparable homes
     → HdpMortgageCalculatorQuery → payment estimates
+    → RentalCostAndFeesBuildingQuery → rent fees (rentals only)
+  → /rentals/api/rcf/v1/rcf → rental costs + utilities breakdown
+
+Mortgage rates (mortgageapi.zillow.com/getCurrentRates)
+  → no auth, GET with params
+  → returns current rates by loan program, credit score, loan amount
 
 photos[] from property
   → zillowstatic.com image CDN
@@ -1074,6 +1136,8 @@ See [zillow_service/README.md](zillow_service/README.md) for full service docume
 - **GraphQL schema changes:** Zillow updates its GraphQL schema frequently. Monitor for `null` fields in responses.
 - **`__NEXT_DATA__` vs Apollo cache:** Newer property pages use Apollo cache (`hdpApolloPreloadedData`). Try both.
 - **Rentals vs For-Sale:** Same endpoint, different `filterState`. Rental prices are per-month.
+- **RCF endpoint:** `/rentals/api/rcf/v1/rcf` returns detailed fee/utility breakdowns for rentals — useful for "total monthly cost" displays.
+- **Mortgage rates:** `mortgageapi.zillow.com/getCurrentRates` works without auth or cookies — great for a standalone rate widget.
 - **`api.zillow.com` is dead:** The old official XML API no longer works. Do not use `pyzillow` or similar old wrappers.
 - **No versioned paths:** Zillow does not use `/v1/` `/v2/` `/v3/` in public-facing URLs.
 
