@@ -18,15 +18,6 @@ Every contribution helps keep this project updated as Zillow changes their API.
 
 ---
 
-## 📱 Real-World Apps Built With This API
-
-These apps are live examples of what you can build using this documentation and the included Django service:
-
-### 🏠 [Sportly: Basketball Live](https://play.google.com/store/apps/details?id=com.sportly.basketball)
-> Real-time NBA, college basketball, and international leagues — scores, standings, player stats, and live game tracking.
-
----
-
 ## Table of Contents
 
 - [Overview](#overview)
@@ -959,8 +950,11 @@ Used for map overlay tiles (heat maps, region overlays). Not easily consumable o
 | `www.zillow.com/graphql/` | GraphQL — property data, scores, estimates | ✅ Current, primary |
 | `www.zillow.com/zg-graph` | GraphQL — autocomplete, recent searches | ✅ Current |
 | `www.zillow.com/rentals/api/rcf/v1/` | Rental costs and fees microservice | ✅ Current |
+| `www.zillow.com/myzillow/api/v1/` | User navigation state, saved homes, alerts | ✅ Current |
 | `www.zillow.com/search/GetSearchPageState.htm` | Legacy REST search | ⚠️ Legacy, partially active |
-| `mortgageapi.zillow.com` | Mortgage rates — no auth required | ✅ Current |
+| `mortgageapi.zillow.com` | Mortgage rates + CMS disclaimers — no auth required | ✅ Current |
+| `settings.zillowhomeloans.com` | Home loans disclaimers / NMLS content | ✅ Current |
+| `www.zillow.com/rental-manager/proxy/rental-manager-api/` | Rental Manager user + listing API | 🔒 Requires account login |
 | `photos.zillowstatic.com` | Property listing photos (CDN) | ✅ Current, static |
 | `maps.zillowstatic.com` | Map tile CDN | ✅ Current, static |
 | `www.zillowstatic.com` | Static assets (JS, CSS, images) | ✅ Current, static |
@@ -1149,8 +1143,13 @@ See [zillow_service/README.md](zillow_service/README.md) for full service docume
 - **Rentals vs For-Sale:** Same endpoint, different `filterState`. Rental prices are per-month.
 - **RCF endpoint:** `/rentals/api/rcf/v1/rcf` returns detailed fee/utility breakdowns for rentals — useful for "total monthly cost" displays.
 - **Mortgage rates:** `mortgageapi.zillow.com/getCurrentRates` works without auth or cookies — great for a standalone rate widget.
+- **Mortgage CMS:** `mortgageapi.zillow.com/getMarkdownCMSDocument?id=zhl-nmls-disclaimer` returns legal/NMLS disclaimer markdown — useful if building a rate widget.
+- **Home Loans disclaimers:** `settings.zillowhomeloans.com/api/v1/public/values/disclaimers.footer` returns footer legal text for Zillow Home Loans pages.
+- **User nav state:** `www.zillow.com/myzillow/api/v1/userNavigation` returns logged-in user's saved homes, alerts, and nav state — requires valid session cookie.
+- **Rental Manager API:** `www.zillow.com/rental-manager/proxy/rental-manager-api/api/v1/users/get` fetches landlord user profile — requires account login.
 - **`api.zillow.com` is dead:** The old official XML API no longer works. Do not use `pyzillow` or similar old wrappers.
 - **No versioned paths:** Zillow does not use `/v1/` `/v2/` `/v3/` in public-facing URLs.
+
 
 ---
 
