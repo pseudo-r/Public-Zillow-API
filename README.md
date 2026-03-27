@@ -888,11 +888,16 @@ The `sha256Hash` values change with Zillow deployments. Use POST with inline que
 | `CollectionOfRecentSearches` | `/zg-graph` | (session) | User's recent searches |
 | `GetCarouselPhotos` | `/zg-graph` | `zpid` | Listing photo carousel URLs |
 | `ForSalePriorityQuery` | `/graphql/` | `zpid` | Core property facts (price, beds, baths, Zestimate) |
+| `ForSaleNonPriorityQuery` | `/graphql/` | `zpid` | Secondary property data (days on market, open house schedule) |
 | `RichMediaWebHDPQuery` | `/graphql/` | `zpid` | High-res photos, virtual tour URLs |
 | `ZestimateDeepDiveQuery` | `/graphql/` | `zpid` | Zestimate, value range, history |
 | `HomeValueChartDataQuery` | `/graphql/` | `zpid`, `useHVChartDataSource` | Value time series |
 | `WalkTransitAndBikeScoreQuery` | `/graphql/` | `zpid` | Walk/transit/bike scores |
 | `OfferStrengthQuery` | `/graphql/` | `zpid` | Market competitiveness / offer strength |
+| `GetContactButtonForProperty` | `/graphql/` | `zpid` | Contact agent lead form config |
+| `GetBuyabilityFinancialProfile` | `/graphql/` | `zpid`, `downPayment`, `loanType` | Mortgage calculator payment breakdown |
+| `LocalLegalProtectionQuery` | `/graphql/` | `zpid` | Fair housing + legal disclosure notices |
+| `GetUserAccountQuery` | `/graphql/` | (session cookie) | Viewer auth state, saved homes |
 | `PropertyClimateRiskQuery` | `/graphql/` | `zpid` | Flood, fire, heat, wind risk |
 | `SimilarSalesQuery` | `/graphql/` | `zpid` | Comparable sold homes |
 | `NearbyHomesQuery` | `/graphql/` | `zpid` | Nearby active listings |

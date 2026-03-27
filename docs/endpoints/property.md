@@ -213,3 +213,25 @@ encoded_zuid = agent["encodedZuid"]
 
 > Use `encodedZuid` with `AgentReviewQuery` on `www.zillow.com/graphql/` to fetch reviews and recent sales via API.
 
+---
+
+## 8. Property Impression Tracking
+
+**Endpoint:** `https://www.zillow.com/ajax/homedetail/MarkPropertyViewed.htm`  
+**Method:** `POST`  
+**Auth:** Session cookie (`zguid`) recommended  
+**Verification:** ✅ VERIFIED (live browser capture)
+
+Called automatically when a user loads a property detail page. Updates the property's view count and the user's viewing history.
+
+```bash
+curl -X POST "https://www.zillow.com/ajax/homedetail/MarkPropertyViewed.htm" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Cookie: zguid=<your-zguid>" \
+  --data "zpid=2077091803"
+```
+
+> This is a fire-and-forget tracking call. Not useful for data extraction, but important to know if you're managing your session's viewing history or testing page impression behavior.
+
+

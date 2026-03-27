@@ -32,11 +32,16 @@ x-caller-id: hdp-react-web-client         # for /graphql/ (optional but improves
 | Operation | Variables | Returns | Verification |
 |-----------|-----------|---------|-------------|
 | `ForSalePriorityQuery` | `zpid` | Core property facts (price, address, beds, baths, Zestimate, description) | ✅ VERIFIED |
+| `ForSaleNonPriorityQuery` | `zpid` | Secondary property data loaded after initial paint | ✅ VERIFIED |
 | `RichMediaWebHDPQuery` | `zpid` | High-res photos, virtual tour URLs, media metadata | ✅ VERIFIED |
 | `ZestimateDeepDiveQuery` | `zpid` | Zestimate, value range, price history | ✅ VERIFIED |
 | `HomeValueChartDataQuery` | `zpid`, `useHVChartDataSource` | Value time series | ✅ VERIFIED |
 | `WalkTransitAndBikeScoreQuery` | `zpid` | Walk/transit/bike scores | ✅ VERIFIED |
 | `OfferStrengthQuery` | `zpid` | Local market competitiveness / offer strength score | ✅ VERIFIED |
+| `GetContactButtonForProperty` | `zpid` | Lead form config and content for "Contact Agent" modal | ✅ VERIFIED |
+| `GetBuyabilityFinancialProfile` | `zpid`, `downPayment`, `loanType` | Buyer affordability metrics from mortgage calculator | ✅ VERIFIED |
+| `LocalLegalProtectionQuery` | `zpid` | Localized legal info and fair housing details | ✅ VERIFIED |
+| `GetUserAccountQuery` | (session) | Current user auth state and account features | ✅ VERIFIED |
 | `PropertyClimateRiskQuery` | `zpid` | Flood, fire, heat, wind risk | ⚠️ PARTIAL |
 | `SimilarSalesQuery` | `zpid` | Comparable recently sold | ⚠️ PARTIAL |
 | `NearbyHomesQuery` | `zpid` | Nearby active listings | ⚠️ PARTIAL |
@@ -192,6 +197,89 @@ curl -X POST "https://www.zillow.com/zg-graph" \
     "query": "query GetCarouselPhotos($zpid: ID!) { property(zpid: $zpid) { zpid photos { url caption } } }"
   }'
 ```
+
+### `ForSaleNonPriorityQuery`
+
+Secondary property data query — fired after `ForSalePriorityQuery` to hydrate below-the-fold sections.
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -d '{
+    "operationName": "ForSaleNonPriorityQuery",
+    "variables": {"zpid": 2077091803},
+    "query": "query ForSaleNonPriorityQuery($zpid: ID!) { property(zpid: $zpid) { zpid daysOnZillow pageViewCount openHouseSchedule { startTime endTime } listingDataSource } }"
+  }'
+```
+
+### `GetContactButtonForProperty`
+
+Fetches configuration for the "Contact Agent" lead form modal.
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -d '{
+    "operationName": "GetContactButtonForProperty",
+    "variables": {"zpid": 2077091803},
+    "query": "query GetContactButtonForProperty($zpid: ID!) { property(zpid: $zpid) { zpid contactFormRenderType listingAgent { displayName encodedZuid profileUrl } coListingAgent { displayName encodedZuid } } }"
+  }'
+```
+
+### `GetBuyabilityFinancialProfile`
+
+Triggered when user adjusts the mortgage calculator (down payment, loan type, etc).
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -d '{
+    "operationName": "GetBuyabilityFinancialProfile",
+    "variables": {"zpid": 2077091803, "downPayment": 120000, "loanType": "FIXED_30"},
+    "query": "query GetBuyabilityFinancialProfile($zpid: ID!, $downPayment: Float, $loanType: String) { property(zpid: $zpid) { zpid monthlyPayment(downPayment: $downPayment, loanType: $loanType) { total principal interest tax insurance pmi } } }"
+  }'
+```
+
+### `LocalLegalProtectionQuery`
+
+Returns localized fair housing and legal notices for a property listing.
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -d '{
+    "operationName": "LocalLegalProtectionQuery",
+    "variables": {"zpid": 2077091803},
+    "query": "query LocalLegalProtectionQuery($zpid: ID!) { property(zpid: $zpid) { zpid legalNotices { fairHousing { body url } localDisclosure } } }"
+  }'
+```
+
+### `GetUserAccountQuery`
+
+Fetches the current user's account state. Requires a valid Zillow session cookie.
+
+```bash
+curl -X POST "https://www.zillow.com/graphql/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+  -H "client-id: hdp-react-web-client" \
+  -H "Cookie: zguid=<your-zguid>" \
+  -d '{
+    "operationName": "GetUserAccountQuery",
+    "variables": {},
+    "query": "query GetUserAccountQuery { viewer { guid displayName email savedHomes { zpid } } }"
+  }'
+```
+
+> Requires valid browser session. Returns `null` viewer if not logged in.
 
 ---
 
