@@ -1,22 +1,18 @@
 """Zillow service views."""
 
+import structlog
 from django.http import JsonResponse
-from rest_framework import status
+from rest_framework import serializers, status
+from rest_framework.permissions import IsAdminUser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-import structlog
-
 from apps.core.exceptions import ZillowClientError, ZillowNotFoundError, ZillowRateLimitError
 from apps.zillow.models import Property
 from apps.zillow.serializers import (
-    AutocompleteResultSerializer,
     PropertyDetailSerializer,
-    PropertyScoreSerializer,
     PropertySerializer,
-    SearchResultSerializer,
-    ZestimateHistorySerializer,
 )
 from clients.zillow_client import ZillowClient
 
@@ -28,7 +24,23 @@ def health_check(request):
     return JsonResponse({"status": "ok", "service": "zillow_service"})
 
 
-class SearchView(APIView):
+class ZillowProxyView(APIView):
+    def dispatch(self, request, *args, **kwargs):
+        self.client = ZillowClient()
+        try:
+            return super().dispatch(request, *args, **kwargs)
+        finally:
+            self.client.close()
+
+
+class SearchInput(serializers.Serializer):
+    query = serializers.CharField()
+    type = serializers.ChoiceField(choices=["sale", "rent", "sold"], default="sale")
+    page = serializers.IntegerField(min_value=1, default=1)
+    days_max = serializers.IntegerField(min_value=1, default=90)
+
+
+class SearchView(ZillowProxyView):
     """Search for properties by location and filters.
 
     POST /api/v1/search/
@@ -46,7 +58,9 @@ class SearchView(APIView):
     """
 
     def post(self, request: Request) -> Response:
-        data = request.data
+        validator = SearchInput(data=request.data)
+        validator.is_valid(raise_exception=True)
+        data = {**request.data, **validator.validated_data}
         query = data.get("query", "")
         if not query:
             return Response(
@@ -59,7 +73,7 @@ class SearchView(APIView):
         page = int(data.get("page", 1))
 
         try:
-            client = ZillowClient()
+            client = self.client
             if search_type == "rent":
                 resp = client.search_for_rent(
                     search_term=query,
@@ -107,7 +121,7 @@ class SearchView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
-class PropertyDetailView(APIView):
+class PropertyDetailView(ZillowProxyView):
     """Get property details by ZPID.
 
     GET /api/v1/properties/{zpid}/
@@ -124,7 +138,7 @@ class PropertyDetailView(APIView):
 
         # Fetch from Zillow
         try:
-            client = ZillowClient()
+            client = self.client
             prop_data = client.get_property_from_page(zpid=zpid)
 
             return Response({
@@ -166,7 +180,7 @@ class PropertyDetailView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
-class ZestimateView(APIView):
+class ZestimateView(ZillowProxyView):
     """Get Zestimate and history for a property.
 
     GET /api/v1/properties/{zpid}/zestimate/
@@ -174,7 +188,7 @@ class ZestimateView(APIView):
 
     def get(self, request: Request, zpid: int) -> Response:
         try:
-            client = ZillowClient()
+            client = self.client
             resp = client.get_zestimate(zpid=zpid)
             hist_resp = client.get_zestimate_history(zpid=zpid)
 
@@ -199,7 +213,7 @@ class ZestimateView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
-class ScoresView(APIView):
+class ScoresView(ZillowProxyView):
     """Get Walk/Transit/Bike scores for a property.
 
     GET /api/v1/properties/{zpid}/scores/
@@ -207,7 +221,7 @@ class ScoresView(APIView):
 
     def get(self, request: Request, zpid: int) -> Response:
         try:
-            client = ZillowClient()
+            client = self.client
             resp = client.get_walk_bike_transit_scores(zpid=zpid)
             prop_data = resp.data.get("data", {}).get("property", {})
 
@@ -222,7 +236,7 @@ class ScoresView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
-class ClimateRiskView(APIView):
+class ClimateRiskView(ZillowProxyView):
     """Get climate risk scores for a property.
 
     GET /api/v1/properties/{zpid}/climate/
@@ -230,7 +244,7 @@ class ClimateRiskView(APIView):
 
     def get(self, request: Request, zpid: int) -> Response:
         try:
-            client = ZillowClient()
+            client = self.client
             resp = client.get_climate_risk(zpid=zpid)
             prop_data = resp.data.get("data", {}).get("property", {})
 
@@ -243,7 +257,7 @@ class ClimateRiskView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
-class AutocompleteView(APIView):
+class AutocompleteView(ZillowProxyView):
     """Autocomplete location suggestions.
 
     GET /api/v1/autocomplete/?q=Seattle
@@ -265,7 +279,7 @@ class AutocompleteView(APIView):
         ]
 
         try:
-            client = ZillowClient()
+            client = self.client
             resp = client.autocomplete(query=q, result_types=result_types)
             results = (
                 resp.data.get("data", {})
@@ -279,7 +293,9 @@ class AutocompleteView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
 
-class IngestPropertyView(APIView):
+class IngestPropertyView(ZillowProxyView):
+    permission_classes = [IsAdminUser]
+
     """Ingest a property by ZPID.
 
     POST /api/v1/ingest/property/
@@ -287,7 +303,8 @@ class IngestPropertyView(APIView):
     """
 
     def post(self, request: Request) -> Response:
-        zpid = request.data.get("zpid")
+        field = serializers.IntegerField(min_value=1)
+        zpid = field.run_validation(request.data.get("zpid"))
         if not zpid:
             return Response(
                 {"error": "zpid is required"},
@@ -295,7 +312,7 @@ class IngestPropertyView(APIView):
             )
 
         try:
-            client = ZillowClient()
+            client = self.client
             prop_data = client.get_property_from_page(zpid=int(zpid))
 
             prop, created = Property.objects.update_or_create(
@@ -326,7 +343,7 @@ class IngestPropertyView(APIView):
                 },
             )
 
-            from apps.zillow.services import ingest_price_history, ingest_zestimate_history
+            from apps.zillow.services import ingest_price_history
             ingest_price_history(prop, prop_data.get("priceHistory", []))
 
             serializer = PropertySerializer(prop)
@@ -345,3 +362,19 @@ class IngestPropertyView(APIView):
         except ZillowClientError as e:
             logger.error("zillow_ingest_error", zpid=zpid, error=str(e))
             return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+class PropertyResourceView(ZillowProxyView):
+    """Expose existing client resources through explicit local routes."""
+    client_method = "get_schools"
+
+    def get(self, request, zpid):
+        try:
+            result = getattr(self.client, self.client_method)(zpid)
+            return Response(result.data)
+        except ZillowNotFoundError:
+            return Response({"error": "Property not found"}, status=404)
+        except ZillowRateLimitError:
+            return Response({"error": "Upstream access restricted"}, status=429)
+        except ZillowClientError:
+            return Response({"error": "Upstream request failed"}, status=502)

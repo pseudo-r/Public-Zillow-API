@@ -1,5 +1,7 @@
 # Zillow Public API Documentation
 
+Service maintenance: [September 2026 audit, new routes, verification, and limitations](docs/audit-2026-09-30.md).
+
 **Disclaimer:** This is documentation for Zillow's undocumented internal API. I am not affiliated with Zillow. Use responsibly and follow Zillow's terms of service.
 
 ---

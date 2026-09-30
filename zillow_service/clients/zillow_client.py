@@ -89,6 +89,10 @@ class ZillowResponse:
         return 200 <= self.status_code < 300
 
 
+class ZillowTransientError(ZillowClientError):
+    """Retryable network or upstream server failure."""
+
+
 class ZillowClient:
     """Client for Zillow API interactions.
 
@@ -161,13 +165,13 @@ class ZillowClient:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def _handle_response(self, response: httpx.Response, url: str) -> ZillowResponse:
+    def _handle_response(
+        self, response: httpx.Response, url: str, raw_response: bool = False
+    ) -> ZillowResponse | httpx.Response:
         """Handle HTTP response and convert to ZillowResponse."""
         if response.status_code == 403:
             logger.warning("zillow_blocked", url=url)
-            raise ZillowRateLimitError(
-                f"Zillow blocked request (403). Use session cookies or reduce request rate. URL: {url}"
-            )
+            raise ZillowRateLimitError(f"Zillow denied access (403). URL: {url}")
 
         if response.status_code == 404:
             logger.warning("zillow_not_found", url=url)
@@ -179,11 +183,14 @@ class ZillowClient:
 
         if response.status_code >= 500:
             logger.error("zillow_server_error", url=url, status_code=response.status_code)
-            raise ZillowClientError(f"Zillow server error: {response.status_code}")
+            raise ZillowTransientError(f"Zillow server error: {response.status_code}")
 
         if response.status_code >= 400:
             logger.error("zillow_client_error", url=url, status_code=response.status_code)
             raise ZillowClientError(f"Zillow API error: {response.status_code}")
+
+        if raw_response:
+            return response
 
         try:
             data = response.json()
@@ -200,11 +207,12 @@ class ZillowClient:
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> ZillowResponse:
+        raw_response: bool = False,
+    ) -> ZillowResponse | httpx.Response:
         """Make HTTP request with retry logic."""
 
         @retry(
-            retry=retry_if_exception_type((httpx.TransportError, ZillowClientError)),
+            retry=retry_if_exception_type((httpx.TransportError, ZillowTransientError)),
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(multiplier=self.retry_backoff, min=1, max=10),
             reraise=True,
@@ -220,7 +228,7 @@ class ZillowClient:
                 json=json_body,
                 headers=headers,
             )
-            return self._handle_response(response, url)
+            return self._handle_response(response, url, raw_response=raw_response)
 
         try:
             return _do_request()
@@ -488,7 +496,8 @@ class ZillowClient:
                 "resultType": result_types,
             },
             "query": (
-                "query GetAutocompleteResults($query: String!, $resultType: [AutocompleteResultType!]) {"
+                "query GetAutocompleteResults($query: String!, "
+                "$resultType: [AutocompleteResultType!]) {"
                 "  zgsAutoComplete(query: $query, resultType: $resultType) {"
                 "    results {"
                 "      display"
@@ -534,17 +543,12 @@ class ZillowClient:
         url = f"{ZILLOW_BASE_URL}/homedetails/{zpid}_zpid/"
 
         logger.info("zillow_get_property_page", zpid=zpid)
-        response = self._request_with_retry(
+        raw = self._request_with_retry(
             "GET",
             url,
             headers=DEFAULT_HEADERS,
+            raw_response=True,
         )
-
-        # response.data will be empty since it's HTML — we need raw response
-        # Re-fetch as raw HTML
-        raw = self.client.get(url, headers=DEFAULT_HEADERS)
-        if raw.status_code == 404:
-            raise ZillowNotFoundError(f"Property not found: zpid={zpid}")
 
         sel = Selector(raw.text)
 
