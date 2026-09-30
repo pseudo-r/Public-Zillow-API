@@ -59,7 +59,7 @@ Zillow provides undocumented internal APIs that power their website and mobile a
 ### Important Notes
 
 - **Unofficial:** These APIs are not officially supported and may change without notice
-- **Bot Detection:** Zillow actively blocks scrapers — browser-like headers and valid cookies are required
+- **Access restrictions:** Zillow blocks automated requests. Do not attempt to evade those controls; use approved access channels.
 - **Rate Limiting:** Aggressive — implement delays and caching
 - **Session Required:** Many endpoints require a valid browser session (`zguid` cookie set on first page load)
 - **No API Key:** No authentication key needed, but session cookies are often required for reliable access
